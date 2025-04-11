@@ -26,6 +26,7 @@ const AppNavigator: React.FC = () => {
           headerTitleStyle: {
             fontWeight: 'bold',
           },
+          headerShown: false
         }}
       >
         <Stack.Screen 
@@ -38,9 +39,6 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen 
           name="CreateTask" 
           component={CreateTask}
-          options={{
-            title: 'Create New Task',
-          }}
         />
       </Stack.Navigator>
     </NavigationContainer>
