@@ -9,7 +9,6 @@ import { useTheme } from '../theme/useTheme';
 import Header from '../components/Header';
 import CategoryFilter from '../components/CategoryFilter';
 import Tasks from '../components/Tasks';
-import Categories from '../components/Categories';
 
 type HomeScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Home'>;
 
