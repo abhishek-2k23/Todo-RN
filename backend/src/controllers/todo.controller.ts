@@ -1,10 +1,9 @@
 import { Request, Response } from 'express';
 import { Todo } from '../models/todo.model';
-import { Category } from '../models/category.model';
 
 export const createTodo = async (req: Request, res: Response) => {
   try {
-    const { title, description, dueDate, priority, categoryId } = req.body;
+    const { title, description, dueDate, priority, category } = req.body;
     const userId = req.user?.id;
 
     const todo = new Todo({
@@ -12,7 +11,7 @@ export const createTodo = async (req: Request, res: Response) => {
       description,
       dueDate,
       priority,
-      category: categoryId,
+      category: category || 'Other',
       user: userId
     });
 
@@ -27,7 +26,6 @@ export const getTodos = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.id;
     const todos = await Todo.find({ user: userId })
-      .populate('category', 'name')
       .sort({ createdAt: -1 });
     res.json(todos);
   } catch (error) {
@@ -38,7 +36,7 @@ export const getTodos = async (req: Request, res: Response) => {
 export const updateTodo = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { title, description, completed, dueDate, priority, categoryId } = req.body;
+    const { title, description, completed, dueDate, priority, category } = req.body;
     const userId = req.user?.id;
 
     const todo = await Todo.findOne({ _id: id, user: userId });
@@ -57,7 +55,7 @@ export const updateTodo = async (req: Request, res: Response) => {
     if (description !== undefined) todo.description = description;
     if (dueDate) todo.dueDate = dueDate;
     if (priority) todo.priority = priority;
-    if (categoryId) todo.category = categoryId;
+    if (category) todo.category = category;
 
     await todo.save();
     res.json(todo);

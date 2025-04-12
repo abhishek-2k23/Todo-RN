@@ -4,7 +4,7 @@ import morgan from 'morgan';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
-import todoRoutes from './routes/todoRoutes';
+import routes from './routes/index';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/todos', todoRoutes);
+app.use('/api', routes);
 
 // Error handling
 app.use(errorHandler);

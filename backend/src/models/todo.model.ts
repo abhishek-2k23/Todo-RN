@@ -22,12 +22,12 @@ const todoSchema = new mongoose.Schema({
   },
   priority: {
     type: String,
-    enum: ['low', 'medium', 'high', 'urgent'],
+    enum: ['low', 'medium', 'high'],
     default: 'low'
   },
   category: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category'
+    type: String,
+    default: 'Other'
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
