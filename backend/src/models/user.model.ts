@@ -1,5 +1,13 @@
-import mongoose from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
+
+// Define the User interface
+export interface IUser extends Document {
+  username: string;
+  email: string;
+  password: string;
+  isModified(path: string): boolean;
+}
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -28,14 +36,15 @@ const userSchema = new mongoose.Schema({
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, 8);
+    try {
+      const salt = await bcrypt.genSalt(10);
+      this.password = await bcrypt.hash(this.password, salt);
+    } catch (error) {
+      return next(error as Error);
+    }
   }
   next();
 });
 
-// Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-export const User = mongoose.model('User', userSchema); 
+// Create and export the model with proper typing
+export const User = mongoose.model<IUser>('User', userSchema); 
