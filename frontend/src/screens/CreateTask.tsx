@@ -7,26 +7,21 @@ import {
   StyleSheet, 
   FlatList,
   ScrollView,
-  Platform
+  Platform,
+  Modal
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { addTask, addCategory } from '../redux/slices/user';
+import { addTask } from '../redux/slices/user';
 import type { RootState } from '../redux/store';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import Icon from 'react-native-vector-icons/Ionicons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../theme/useTheme';
 
 type CreateTaskScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateTask'>;
 
-export enum PriorityLevel {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  URGENT = 'urgent'
-}
+type Priority = 'low' | 'medium' | 'high';
 
 interface Task {
   id: string;
@@ -34,8 +29,10 @@ interface Task {
   description: string;
   category: string;
   completed: boolean;
-  priority: PriorityLevel;
+  priority: Priority;
   dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Category {
@@ -47,12 +44,11 @@ const CreateTask: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
-  const [newCategory, setNewCategory] = useState('');
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [priority, setPriority] = useState<PriorityLevel>(PriorityLevel.LOW);
+  const [priority, setPriority] = useState<Priority>('low');
   const [dueDate, setDueDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
   const dispatch = useDispatch();
   const navigation = useNavigation<CreateTaskScreenNavigationProp>();
@@ -60,30 +56,23 @@ const CreateTask: React.FC = () => {
   const theme = useTheme();
 
   const handleAddTask = () => {
+    if (!title.trim()) {
+      return;
+    }
+
     const newTask: Task = {
       id: Date.now().toString(),
-      title,
-      description,
-      category,
+      title: title.trim(),
+      description: description.trim(),
+      category: category || 'Other',
       completed: false,
       priority,
       dueDate: dueDate || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     dispatch(addTask(newTask));
     navigation.goBack();
-  };
-
-  const handleAddCategory = () => {
-    if (newCategory) {
-      const newCategoryObj: Category = {
-        id: Date.now().toString(),
-        name: newCategory,
-      };
-      dispatch(addCategory(newCategoryObj));
-      setCategory(newCategory);
-      setNewCategory('');
-      setShowNewCategory(false);
-    }
   };
 
   const handleDateChange = (event: any, date?: Date) => {
@@ -95,14 +84,22 @@ const CreateTask: React.FC = () => {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   const priorityData = [
-    { level: PriorityLevel.LOW, label: 'Low Priority' },
-    { level: PriorityLevel.MEDIUM, label: 'Medium Priority' },
-    { level: PriorityLevel.HIGH, label: 'High Priority' },
-    { level: PriorityLevel.URGENT, label: 'Urgent Priority' },
+    { level: 'low' as Priority, label: 'Low Priority' },
+    { level: 'medium' as Priority, label: 'Medium Priority' },
+    { level: 'high' as Priority, label: 'High Priority' },
   ];
 
-  const renderPriorityItem = ({ item }: { item: { level: PriorityLevel; label: string } }) => (
+  const renderPriorityItem = ({ item }: { item: { level: Priority; label: string } }) => (
     <TouchableOpacity
       style={[
         styles.priorityItem,
@@ -130,180 +127,124 @@ const CreateTask: React.FC = () => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color={theme.text} />
+          <Text style={[styles.backText, { color: theme.text }]}>← Back</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: theme.text }]}>Create Task</Text>
       </View>
 
       <ScrollView style={styles.content}>
-        <TextInput
-          style={[
-            styles.input,
-            { 
-              color: theme.text,
-              backgroundColor: theme.inputBackground,
-              borderColor: theme.border,
-              borderWidth: 1,
-            }
-          ]}
-          placeholder="Title"
-          placeholderTextColor={theme.placeholder}
-          value={title}
-          onChangeText={setTitle}
-        />
-        <TextInput
-          style={[
-            styles.input,
-            styles.descriptionInput,
-            { 
-              color: theme.text,
-              backgroundColor: theme.inputBackground,
-              borderColor: theme.border,
-              borderWidth: 1,
-            }
-          ]}
-          placeholder="Description"
-          placeholderTextColor={theme.placeholder}
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-        <View style={styles.dateInputContainer}>
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Text style={[styles.label, { color: theme.text }]}>Title</Text>
           <TextInput
-            style={[
-              styles.input,
-              styles.dateInput,
-              { 
-                color: theme.text,
-                backgroundColor: theme.inputBackground,
-                borderColor: theme.border,
-                borderWidth: 1,
-              }
-            ]}
-            placeholder="Due Date (YYYY-MM-DD)"
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Enter task title"
             placeholderTextColor={theme.placeholder}
-            value={dueDate}
-            editable={false}
+            value={title}
+            onChangeText={setTitle}
           />
-          <TouchableOpacity 
-            style={[
-              styles.calendarButton,
-              { 
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                borderWidth: 1,
-              }
-            ]}
+        </View>
+
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Text style={[styles.label, { color: theme.text }]}>Description</Text>
+          <TextInput
+            style={[styles.input, { color: theme.text }]}
+            placeholder="Enter task description"
+            placeholderTextColor={theme.placeholder}
+            value={description}
+            onChangeText={setDescription}
+            multiline
+          />
+        </View>
+
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Text style={[styles.label, { color: theme.text }]}>Due Date</Text>
+          <TouchableOpacity
+            style={[styles.dateButton, { backgroundColor: theme.card }]}
             onPress={() => setShowDatePicker(true)}
           >
-            <Icon name="calendar" size={24} color={theme.text} />
+            <Text style={[styles.dateText, { color: theme.text }]}>
+              📅 {dueDate ? formatDate(dueDate) : 'Select date'}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={selectedDate}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleDateChange}
-            minimumDate={new Date()}
-          />
-        )}
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Select Category
-          </Text>
-          <FlatList
-            data={categories}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  category === item.name && styles.selectedCategory,
-                  { 
-                    backgroundColor: category === item.name ? theme.selected : theme.card,
-                    borderColor: theme.border,
-                    borderWidth: 1,
-                  }
-                ]}
-                onPress={() => setCategory(item.name)}
-              >
-                <Text style={[
-                  styles.categoryText,
-                  { 
-                    color: category === item.name ? theme.selectedText : theme.text
-                  }
-                ]}>
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-            keyExtractor={(item) => item.id}
-            ListFooterComponent={
-              <TouchableOpacity
-                style={[
-                  styles.categoryItem,
-                  { 
-                    backgroundColor: theme.card,
-                    borderColor: theme.border,
-                    borderWidth: 1,
-                  }
-                ]}
-                onPress={() => setShowNewCategory(true)}
-              >
-                <Text style={[styles.categoryText, { color: theme.text }]}>
-                  Create New Category
-                </Text>
-              </TouchableOpacity>
-            }
-          />
-        </View>
-
-        {showNewCategory && (
-          <View style={styles.newCategoryContainer}>
-            <TextInput
-              style={[
-                styles.input,
-                { 
-                  color: theme.text,
-                  backgroundColor: theme.inputBackground,
-                  borderColor: theme.border,
-                  borderWidth: 1,
-                }
-              ]}
-              placeholder="New Category Name"
-              placeholderTextColor={theme.placeholder}
-              value={newCategory}
-              onChangeText={setNewCategory}
-            />
-            <TouchableOpacity 
-              style={[styles.button, { backgroundColor: theme.primary }]}
-              onPress={handleAddCategory}
-            >
-              <Text style={styles.buttonText}>Add Category</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>
-            Select Priority
-          </Text>
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Text style={[styles.label, { color: theme.text }]}>Priority</Text>
           <FlatList
             data={priorityData}
             renderItem={renderPriorityItem}
             keyExtractor={(item) => item.level}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.priorityList}
           />
         </View>
 
-        <TouchableOpacity 
-          style={[styles.submitButton, { backgroundColor: theme.primary }]}
+        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
+          <Text style={[styles.label, { color: theme.text }]}>Category</Text>
+          <TouchableOpacity
+            style={[styles.categoryButton, { backgroundColor: theme.card }]}
+            onPress={() => setShowCategoryPicker(true)}
+          >
+            <Text style={[styles.categoryText, { color: theme.text }]}>
+              📁 {category || 'Select category'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.createButton, { backgroundColor: theme.primary }]}
           onPress={handleAddTask}
         >
-          <Text style={styles.submitButtonText}>Create Task</Text>
+          <Text style={[styles.createButtonText, { color: theme.selectedText }]}>
+            Create Task
+          </Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+
+      {showCategoryPicker && (
+        <Modal
+          visible={showCategoryPicker}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowCategoryPicker(false)}
+        >
+          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Category</Text>
+              {categories.map((cat: Category) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.categoryOption,
+                    { backgroundColor: category === cat.name ? theme.selected : theme.card }
+                  ]}
+                  onPress={() => {
+                    setCategory(cat.name);
+                    setShowCategoryPicker(false);
+                  }}
+                >
+                  <Text style={[
+                    styles.categoryOptionText,
+                    { color: category === cat.name ? theme.selectedText : theme.text }
+                  ]}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -329,57 +270,36 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   input: {
     height: 50,
     borderRadius: 12,
     paddingHorizontal: 16,
-    marginBottom: 16,
     fontSize: 16,
   },
-  descriptionInput: {
-    height: 100,
-    textAlignVertical: 'top',
-    paddingTop: 16,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  categoryItem: {
-    padding: 16,
+  dateButton: {
+    height: 50,
     borderRadius: 12,
-    marginBottom: 8,
-  },
-  selectedCategory: {
-    backgroundColor: '#007AFF',
-  },
-  categoryText: {
-    fontSize: 16,
-  },
-  selectedCategoryText: {
-    color: '#FFFFFF',
-  },
-  newCategoryContainer: {
-    marginBottom: 24,
-  },
-  button: {
     padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
+    justifyContent: 'center',
   },
-  buttonText: {
-    color: '#FFFFFF',
+  dateText: {
     fontSize: 16,
-    fontWeight: '600',
+  },
+  priorityList: {
+    padding: 16,
   },
   priorityItem: {
     padding: 16,
     borderRadius: 12,
-    marginBottom: 8,
+    marginRight: 8,
   },
   selectedPriority: {
     backgroundColor: '#007AFF',
@@ -387,33 +307,53 @@ const styles = StyleSheet.create({
   priorityText: {
     fontSize: 16,
   },
-  selectedPriorityText: {
-    color: '#FFFFFF',
-  },
-  dateInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateInput: {
-    flex: 1,
-    marginRight: 8,
-  },
-  calendarButton: {
-    padding: 8,
+  categoryButton: {
+    height: 50,
     borderRadius: 12,
+    padding: 16,
+    justifyContent: 'center',
   },
-  submitButton: {
+  categoryText: {
+    fontSize: 16,
+  },
+  createButton: {
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 24,
     marginBottom: 32,
   },
-  submitButtonText: {
-    color: '#FFFFFF',
+  createButtonText: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 12,
+    width: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+  },
+  categoryOption: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  categoryOptionText: {
+    fontSize: 16,
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 
