@@ -7,6 +7,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   isModified(path: string): boolean;
+  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const userSchema = new mongoose.Schema({
@@ -45,6 +46,15 @@ userSchema.pre('save', async function(next) {
   }
   next();
 });
+
+// Add method to compare passwords
+userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+  try {
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw error;
+  }
+};
 
 // Create and export the model with proper typing
 export const User = mongoose.model<IUser>('User', userSchema); 
