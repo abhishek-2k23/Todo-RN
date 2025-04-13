@@ -7,13 +7,22 @@ export const register = async (req: Request, res: Response) => {
   try {
     const { username, email, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+    // Validate input
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    // Create new user - password will be hashed by the pre-save hook
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: existingUser.email === email ? 
+          'Email already exists' : 
+          'Username already exists' 
+      });
+    }
+
+    // Create new user
     const user = new User({
       username,
       email,
@@ -37,8 +46,18 @@ export const register = async (req: Request, res: Response) => {
         email: user.email
       }
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Error registering user', error });
+  } catch (error: any) {
+    console.error('Registration error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors: Object.values(error.errors).map((err: any) => err.message)
+      });
+    }
+    res.status(500).json({ 
+      message: 'Error registering user',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
