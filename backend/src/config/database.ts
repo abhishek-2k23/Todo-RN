@@ -19,7 +19,7 @@ const connectDB = async (): Promise<void> => {
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
     };
 
-    console.log('Attempting to connect to MongoDB at:', mongoURI);
+    console.log('Attempting to connect to MongoDB ');
     
     await mongoose.connect(mongoURI, options);
     
