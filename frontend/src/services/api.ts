@@ -161,6 +161,7 @@ export const todos = {
     description?: string;
     priority: 'low' | 'medium' | 'high';
     category: string;
+    dueDate?: string;
   }) => {
     try {
       const response = await api.post('/todos', todo);
