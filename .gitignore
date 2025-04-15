@@ -1,9 +1,10 @@
 */node_modules
-
 # OSX
 #
 .DS_Store
 
+.env
+backend/.env
 # Xcode
 #
 build/
