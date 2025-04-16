@@ -1,10 +1,12 @@
+/* eslint-disable react-native/no-inline-styles */
 // frontend/src/components/Tasks.tsx
 
 import React from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { useTheme } from '../theme/useTheme';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { updateTask, deleteTask } from '../redux/slices/user';
+import BouncyCheckbox from 'react-native-bouncy-checkbox';
 
 interface Task {
   id: string;
@@ -19,19 +21,12 @@ interface Task {
 }
 
 const Tasks: React.FC = () => {
-  const theme = useTheme();
+  const theme = useAppTheme();
   const dispatch = useDispatch();
   const tasks = useSelector((state: any) => state.user.tasks || []);
   const selectedCategory = useSelector((state: any) => state.user.selectedCategory || 'All');
   const [selectedTask, setSelectedTask] = React.useState<Task | null>(null);
   const [modalVisible, setModalVisible] = React.useState(false);
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log('Current tasks:', tasks);
-    console.log('Selected category:', selectedCategory);
-    console.log('Current theme:', theme);
-  }, [tasks, selectedCategory, theme]);
 
   const filteredTasks = React.useMemo(() => {
     if (selectedCategory === 'All') {
@@ -41,13 +36,31 @@ const Tasks: React.FC = () => {
   }, [tasks, selectedCategory]);
 
   const handleCompleteTask = (task: Task) => {
-    dispatch(updateTask({ ...task, completed: true }));
-    setModalVisible(false);
+    const updatedTask = {
+      ...task,
+      completed: !task.completed,
+      updatedAt: new Date().toISOString()
+    };
+    dispatch(updateTask(updatedTask));
   };
 
   const handleDeleteTask = (taskId: string) => {
     dispatch(deleteTask(taskId));
     setModalVisible(false);
+  };
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -63,24 +76,14 @@ const Tasks: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
   const renderItem = ({ item }: { item: Task }) => (
     <TouchableOpacity
       style={[
         styles.taskItem,
-        { 
+        {
           backgroundColor: theme.card,
-          borderColor: theme.border,
-          borderWidth: 1,
-        }
+          borderLeftColor: getPriorityColor(item.priority),
+        },
       ]}
       onPress={() => {
         setSelectedTask(item);
@@ -89,34 +92,42 @@ const Tasks: React.FC = () => {
     >
       <View style={styles.taskContent}>
         <View style={styles.taskHeader}>
-          <Text 
-            style={[
-              styles.taskTitle, 
+
+          {/* //bouncy check box  */}
+          <BouncyCheckbox
+            size={25}
+            fillColor={getPriorityColor(item.priority)}
+
+            // item title 
+            text={item.title}
+            iconStyle={{ borderColor: getPriorityColor(item.priority) }}
+            innerIconStyle={{ borderWidth: 2 }}
+            textStyle={[
+              styles.taskTitle,
               { color: theme.text },
-              item.completed && styles.completedText
+              item.completed && styles.completedText,
             ]}
-          >
-            {item.title}
-          </Text>
-          <Text style={[styles.menuText, { color: theme.text }]}>⋮</Text>
+            isChecked={item.completed}
+            onPress={() => handleCompleteTask(item)}
+          />
+
+          {/* three dot option menu  */}
+          <TouchableOpacity onPress={() => {
+            setSelectedTask(item);
+            setModalVisible(true);
+          }}>
+            <Text style={[styles.menuText, { color: theme.text }]}>⋮</Text>
+          </TouchableOpacity>
         </View>
-        <Text style={[styles.taskDescription, { color: theme.textSecondary }]}>
-          {item.description}
-        </Text>
         <View style={styles.taskFooter}>
-          <View style={styles.categoryContainer}>
-            <Text style={[styles.categoryText, { color: theme.textSecondary }]}>
-              📁 {item.category}
-            </Text>
-          </View>
-          {item.completed && item.completionTime && (
-            <Text style={[styles.completionTime, { color: theme.textSecondary }]}>
-              ✅ {formatDate(item.completionTime)}
-            </Text>
-          )}
+          {item.dueDate ? <Text style={[styles.dueDate, { color: theme.textSecondary }]}>
+            📅 {formatDate(item.dueDate)}
+          </Text> : <Text> </Text>}
+          <Text style={[styles.category, { color: theme.textSecondary }]}>
+            📁 {item.category}
+          </Text>
         </View>
       </View>
-      <View style={[styles.priorityIndicator, { backgroundColor: getPriorityColor(item.priority) }]} />
     </TouchableOpacity>
   );
 
@@ -138,37 +149,33 @@ const Tasks: React.FC = () => {
       )}
 
       <Modal
-        animationType="fade"
-        transparent={true}
         visible={modalVisible}
+        transparent
+        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-            <TouchableOpacity 
-              style={styles.modalOption}
-              onPress={() => selectedTask && handleCompleteTask(selectedTask)}
-            >
-              <Text style={[styles.modalOptionText, { color: theme.text }]}>
-                ✅ Mark as Completed
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.modalOption}
-              onPress={() => selectedTask && handleDeleteTask(selectedTask.id)}
-            >
-              <Text style={[styles.modalOptionText, { color: '#FF4444' }]}>
-                🗑️ Delete Task
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.modalOption}
-              onPress={() => setModalVisible(false)}
-            >
-              <Text style={[styles.modalOptionText, { color: theme.text }]}>
-                ❌ Cancel
-              </Text>
-            </TouchableOpacity>
+          <View style={[styles.modalContent, { backgroundColor: theme.inputBackground }]}>
+            {selectedTask && (
+              <>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>
+                  {selectedTask.title}
+                </Text>
+                <Text style={[styles.modalDescription, { color: theme.text }]}>
+                  {selectedTask.description}
+                </Text>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, { backgroundColor: theme.primary }]}
+                    onPress={() => handleDeleteTask(selectedTask.id)}
+                  >
+                    <Text style={[styles.actionButtonText, { color: theme.selectedText }]}>
+                      Delete
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -181,17 +188,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listContainer: {
-    padding: 16,
+    padding: 2,
+    paddingHorizontal: 5,
   },
   taskItem: {
-    flexDirection: 'row',
     marginBottom: 12,
     borderRadius: 12,
-    overflow: 'hidden',
+    borderLeftWidth: 2,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   taskContent: {
-    flex: 1,
-    padding: 16,
+    padding: 10,
+    paddingRight: 16,
   },
   taskHeader: {
     flexDirection: 'row',
@@ -220,20 +232,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
   },
-  categoryContainer: {
-    flexDirection: 'row',
+  dueDate: {
+    fontSize: 12,
+  },
+  category: {
+    fontSize: 12,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  categoryText: {
-    fontSize: 12,
-  },
-  completionTime: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  priorityIndicator: {
-    width: 4,
+  emptyStateText: {
+    fontSize: 16,
+    marginTop: 12,
   },
   modalOverlay: {
     flex: 1,
@@ -246,23 +261,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
-  modalOption: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 8,
   },
-  modalOptionText: {
+  modalDescription: {
     fontSize: 16,
+    marginBottom: 16,
   },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  actionButton: {
+    padding: 10,
+    borderRadius: 4,
+    minWidth: 100,
     alignItems: 'center',
-    padding: 20,
   },
-  emptyStateText: {
+  actionButtonText: {
     fontSize: 16,
-    marginTop: 12,
+    fontWeight: 'bold',
   },
 });
 

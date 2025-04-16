@@ -6,14 +6,14 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import { useTheme } from '../theme/useTheme';
+import { useAppTheme } from '../hooks/useAppTheme';
 import { toggleTheme } from '../redux/slices/theme';
 
 type HeaderNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const Header: React.FC = () => {
   const navigation = useNavigation<HeaderNavigationProp>();
-  const theme = useTheme();
+  const theme = useAppTheme();
   const dispatch = useDispatch();
   const userData = useSelector((state: any) => state.user.userData);
   const isDarkMode = useSelector((state: any) => state.theme.isDarkMode);
