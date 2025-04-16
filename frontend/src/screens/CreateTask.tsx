@@ -1,61 +1,39 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  FlatList,
+import React, {useState} from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
   ScrollView,
-  Platform,
-  Modal
 } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';
-import { addTask } from '../redux/slices/user';
-import type { RootState } from '../redux/store';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import {useNavigation, useRoute, RouteProp} from '@react-navigation/native';
+import {Task, Priority} from '../types/task';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../navigation/AppNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useTheme } from '../theme/useTheme';
+import {useAppTheme} from '../hooks/useAppTheme';
 
-type CreateTaskScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateTask'>;
-
-type Priority = 'low' | 'medium' | 'high';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  completed: boolean;
-  priority: Priority;
-  dueDate?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
+type CreateTaskScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'CreateTask'
+>;
+type CreateTaskScreenRouteProp = RouteProp<RootStackParamList, 'CreateTask'>;
 
 const CreateTask: React.FC = () => {
+  const navigation = useNavigation<CreateTaskScreenNavigationProp>();
+  const route = useRoute<CreateTaskScreenRouteProp>();
+  const theme = useAppTheme();
+
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState('General');
   const [priority, setPriority] = useState<Priority>('low');
   const [dueDate, setDueDate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
 
-  const dispatch = useDispatch();
-  const navigation = useNavigation<CreateTaskScreenNavigationProp>();
-  const categories = useSelector((state: RootState) => state.user.categories);
-  const theme = useTheme();
-
-  const handleAddTask = () => {
+  const handleCreateTask = async () => {
     if (!title.trim()) {
       return;
     }
@@ -64,22 +42,30 @@ const CreateTask: React.FC = () => {
       id: Date.now().toString(),
       title: title.trim(),
       description: description.trim(),
-      category: category || 'Other',
-      completed: false,
+      category,
       priority,
-      dueDate: dueDate || undefined,
+      completed: false,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      dueDate: dueDate,
     };
-    dispatch(addTask(newTask));
-    navigation.goBack();
-  };
 
+    try {
+      if (route.params?.onCreateTask) {
+        await route.params.onCreateTask(newTask);
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+    }
+  };
   const handleDateChange = (event: any, date?: Date) => {
     setShowDatePicker(false);
     if (date) {
       setSelectedDate(date);
-      const adjustedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      const adjustedDate = new Date(
+        date.getTime() - date.getTimezoneOffset() * 60000,
+      );
       setDueDate(adjustedDate.toISOString().split('T')[0]);
     }
   };
@@ -89,118 +75,135 @@ const CreateTask: React.FC = () => {
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
-  const priorityData = [
-    { level: 'low' as Priority, label: 'Low Priority' },
-    { level: 'medium' as Priority, label: 'Medium Priority' },
-    { level: 'high' as Priority, label: 'High Priority' },
+  const priorityData: {label: string; value: Priority}[] = [
+    {label: '🟢 Low', value: 'low'},
+    {label: '🟡 Medium', value: 'medium'},
+    {label: '🔴 High', value: 'high'},
   ];
 
-  const renderPriorityItem = ({ item }: { item: { level: Priority; label: string } }) => (
-    <TouchableOpacity
-      style={[
-        styles.priorityItem,
-        priority === item.level && styles.selectedPriority,
-        { 
-          backgroundColor: priority === item.level ? theme.selected : theme.card,
-          borderColor: theme.border,
-          borderWidth: 1,
-        }
-      ]}
-      onPress={() => setPriority(item.level)}
-    >
-      <Text style={[
-        styles.priorityText,
-        { 
-          color: priority === item.level ? theme.selectedText : theme.text
-        }
-      ]}>
-        {item.label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const categories = ['General', 'Work', 'Personal', 'Shopping', 'Other'];
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={[styles.backText, { color: theme.text }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: theme.text }]}>Create Task</Text>
-      </View>
+    <ScrollView style={[styles.container, {backgroundColor: theme.background}]}>
+      <Text style={[styles.title, {color: theme.text}]}>Create New Task</Text>
 
-      <ScrollView style={styles.content}>
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <Text style={[styles.label, { color: theme.text }]}>Title</Text>
-          <TextInput
-            style={[styles.input, { color: theme.text }]}
-            placeholder="Enter task title"
-            placeholderTextColor={theme.placeholder}
-            value={title}
-            onChangeText={setTitle}
-          />
-        </View>
+      <TextInput
+        style={[
+          styles.input,
+          {backgroundColor: theme.accent, color: theme.text},
+        ]}
+        placeholder="Title"
+        placeholderTextColor={theme.textSecondary}
+        value={title}
+        onChangeText={setTitle}
+      />
 
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <Text style={[styles.label, { color: theme.text }]}>Description</Text>
-          <TextInput
-            style={[styles.input, { color: theme.text }]}
-            placeholder="Enter task description"
-            placeholderTextColor={theme.placeholder}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-          />
-        </View>
+      <TextInput
+        style={[
+          styles.input,
+          styles.textArea,
+          {backgroundColor: theme.accent, color: theme.text},
+        ]}
+        placeholder="Description"
+        placeholderTextColor={theme.textSecondary}
+        value={description}
+        onChangeText={setDescription}
+        multiline
+        numberOfLines={4}
+      />
 
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <Text style={[styles.label, { color: theme.text }]}>Due Date</Text>
-          <TouchableOpacity
-            style={[styles.dateButton, { backgroundColor: theme.card }]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={[styles.dateText, { color: theme.text }]}>
-              📅 {dueDate ? formatDate(dueDate) : 'Select date'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <Text style={[styles.label, { color: theme.text }]}>Priority</Text>
-          <FlatList
-            data={priorityData}
-            renderItem={renderPriorityItem}
-            keyExtractor={(item) => item.level}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.priorityList}
-          />
-        </View>
-
-        <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-          <Text style={[styles.label, { color: theme.text }]}>Category</Text>
-          <TouchableOpacity
-            style={[styles.categoryButton, { backgroundColor: theme.card }]}
-            onPress={() => setShowCategoryPicker(true)}
-          >
-            <Text style={[styles.categoryText, { color: theme.text }]}>
-              📁 {category || 'Select category'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
+      <View
+        style={[
+          styles.input,
+          {
+            backgroundColor: theme.inputBackground,
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          },
+        ]}>
+        <Text style={[styles.label, {color: theme.text}]}>Due Date</Text>
         <TouchableOpacity
-          style={[styles.createButton, { backgroundColor: theme.primary }]}
-          onPress={handleAddTask}
-        >
-          <Text style={[styles.createButtonText, { color: theme.selectedText }]}>
-            Create Task
+          style={[styles.dateButton, {backgroundColor: theme.card}]}
+          onPress={() => setShowDatePicker(true)}>
+          <Text style={[styles.dateText, {color: theme.text}]}>
+            📅 {dueDate ? formatDate(dueDate) : 'Select date'}
           </Text>
         </TouchableOpacity>
-      </ScrollView>
+      </View>
+
+      <Text style={[styles.label, {color: theme.text}]}>Category</Text>
+      <View style={styles.categoryContainer}>
+        {categories.map(cat => (
+          <TouchableOpacity
+            key={cat}
+            style={[
+              styles.categoryButton,
+              {
+                backgroundColor:
+                  category === cat ? theme.primary : theme.accent,
+              },
+            ]}
+            onPress={() => setCategory(cat)}>
+            <Text
+              style={[
+                styles.categoryButtonText,
+                {
+                  color: category === cat ? theme.selectedText : theme.text,
+                },
+              ]}>
+              {cat}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={[styles.label, {color: theme.text}]}>Priority</Text>
+      <View style={styles.priorityContainer}>
+        {priorityData.map(item => (
+          <TouchableOpacity
+            key={item.value}
+            style={[
+              styles.priorityButton,
+              {
+                backgroundColor:
+                  priority === item.value ? theme.primary : theme.accent,
+              },
+            ]}
+            onPress={() => setPriority(item.value)}>
+            <Text
+              style={[
+                styles.priorityButtonText,
+                {
+                  color:
+                    priority === item.value ? theme.selectedText : theme.text,
+                },
+              ]}>
+              {item.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[styles.button, {backgroundColor: theme.accent}]}
+          onPress={() => navigation.goBack()}>
+          <Text style={[styles.buttonText, {color: theme.text}]}>Cancel</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, {backgroundColor: theme.primary}]}
+          onPress={handleCreateTask}>
+          <Text style={[styles.buttonText, {color: theme.selectedText}]}>
+            Create
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {showDatePicker && (
         <DateTimePicker
@@ -210,79 +213,25 @@ const CreateTask: React.FC = () => {
           onChange={handleDateChange}
         />
       )}
-
-      {showCategoryPicker && (
-        <Modal
-          visible={showCategoryPicker}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowCategoryPicker(false)}
-        >
-          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
-            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
-              <Text style={[styles.modalTitle, { color: theme.text }]}>Select Category</Text>
-              {categories.map((cat: Category) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryOption,
-                    { backgroundColor: category === cat.name ? theme.selected : theme.card }
-                  ]}
-                  onPress={() => {
-                    setCategory(cat.name);
-                    setShowCategoryPicker(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.categoryOptionText,
-                    { color: category === cat.name ? theme.selectedText : theme.text }
-                  ]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </Modal>
-      )}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 16,
-  },
-  backButton: {
-    marginRight: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: 20,
   },
   input: {
     height: 50,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 15,
   },
   dateButton: {
     height: 50,
@@ -293,68 +242,64 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
   },
-  priorityList: {
-    padding: 16,
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: 15,
   },
-  priorityItem: {
-    padding: 16,
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  selectedPriority: {
-    backgroundColor: '#007AFF',
-  },
-  priorityText: {
+  label: {
     fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 20,
   },
   categoryButton: {
-    height: 50,
-    borderRadius: 12,
-    padding: 16,
-    justifyContent: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 10,
+    marginBottom: 10,
   },
-  categoryText: {
-    fontSize: 16,
+  categoryButtonText: {
+    fontSize: 14,
   },
-  createButton: {
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
+  priorityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  createButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  modalContainer: {
+  priorityButton: {
     flex: 1,
-    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 8,
+    marginHorizontal: 5,
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    padding: 24,
-    borderRadius: 12,
-    width: '80%',
+  priorityButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
   },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
   },
-  categoryOption: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+  button: {
+    flex: 1,
+    height: 50,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
   },
-  categoryOptionText: {
+  buttonText: {
     fontSize: 16,
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontWeight: 'bold',
   },
 });
 
-export default CreateTask; 
+export default CreateTask;
