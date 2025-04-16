@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../theme/useTheme';
+import { useAppTheme } from '../hooks/useAppTheme';
 
 const UserProfile: React.FC = () => {
   const navigation = useNavigation();
-  const theme = useTheme();
+  const theme = useAppTheme();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -37,17 +37,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   button: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    padding: 15,
     borderRadius: 8,
-    marginTop: 20,
+    minWidth: 120,
+    alignItems: 'center',
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
 });
 

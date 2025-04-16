@@ -1,44 +1,24 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-
-// Define types for user data, tasks, and categories
-export interface Task {
-  id: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
-  completed: boolean;
-  category: string;
-  completionTime?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface UserData {
-  id: string;
-  name: string;
-  email: string;
-}
+import { UserData } from '../../types/user';
+import { Task } from '../../types/task';
 
 interface UserState {
   userData: UserData | null;
   tasks: Task[];
-  categories: Category[];
+  categories: string[];
   selectedCategory: string;
   isDarkMode: boolean;
+  isLoading: boolean;
 }
 
 // Initial state
 const initialState: UserState = {
   userData: null,
   tasks: [],
-  categories: [{id: '1', name: 'Work'}, {id: '2', name: 'Personal'}],
+  categories: ['All', 'General', 'Work', 'Personal', 'Shopping', 'Other'],
   selectedCategory: 'All',
   isDarkMode: false,
+  isLoading: false,
 };
 
 // Create a slice
@@ -56,19 +36,13 @@ const userSlice = createSlice({
       state.tasks.push(action.payload);
     },
     updateTask: (state, action: PayloadAction<Task>) => {
-      const index = state.tasks.findIndex(task => task.id === action.payload.id);
+      const index = state.tasks.findIndex((task) => task.id === action.payload.id);
       if (index !== -1) {
         state.tasks[index] = action.payload;
       }
     },
     deleteTask: (state, action: PayloadAction<string>) => {
-      state.tasks = state.tasks.filter(task => task.id !== action.payload);
-    },
-    addCategory: (state, action: PayloadAction<Category>) => {
-      state.categories.push(action.payload);
-    },
-    removeCategory: (state, action: PayloadAction<string>) => {
-      state.categories = state.categories.filter(category => category.id !== action.payload);
+      state.tasks = state.tasks.filter((task) => task.id !== action.payload);
     },
     setSelectedCategory: (state, action: PayloadAction<string>) => {
       state.selectedCategory = action.payload;
@@ -76,9 +50,22 @@ const userSlice = createSlice({
     setDarkMode: (state, action: PayloadAction<boolean>) => {
       state.isDarkMode = action.payload;
     },
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.isLoading = action.payload;
+    },
   },
 });
 
 // Export actions and reducer
-export const { setUserData, setTasks, addTask, updateTask, deleteTask, addCategory, removeCategory, setSelectedCategory, setDarkMode } = userSlice.actions;
+export const {
+  setUserData,
+  setTasks,
+  addTask,
+  updateTask,
+  deleteTask,
+  setSelectedCategory,
+  setDarkMode,
+  setLoading,
+} = userSlice.actions;
+
 export default userSlice.reducer;
