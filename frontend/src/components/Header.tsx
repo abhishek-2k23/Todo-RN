@@ -1,5 +1,3 @@
-// frontend/src/components/Header.tsx
-
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
@@ -18,7 +16,7 @@ const Header: React.FC = () => {
   const userData = useSelector((state: any) => state.user.userData);
   const isDarkMode = useSelector((state: any) => state.theme.isDarkMode);
 
-  const userInitials = userData?.name ? userData.name.charAt(0).toUpperCase() : 'U';
+  const userInitials = userData?.name ? userData.name.charAt(0).toUpperCase() : '🙋';
 
   const handleUserPress = () => {
     if (userData) {
