@@ -88,7 +88,7 @@ export const auth = {
       if (response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
       }
-      Alert.alert('Login Successful', `token : ${response.data.token}`)
+      Alert.alert('Login Successful')
       return response.data;
     } catch (error: any) {
       console.error('Login error:', error);
